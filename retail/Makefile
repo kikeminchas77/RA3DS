@@ -128,7 +128,7 @@ dsiwifi:
 	}
 	@$(MAKE) -C $(DSIWIFI) include/dswifi_version.h
 	@mkdir -p $(DSIWIFI)/lib
-	@$(MAKE) -C $(DSIWIFI)/arm_iop BUILD=release
+	@$(MAKE) -C $(DSIWIFI)/arm_iop BUILD=release TOPDIR=$(abspath $(DSIWIFI))
 
 #---------------------------------------------------------------------------------
 arm7/$(TARGET).elf: $(ARM7_EXTRA_DEPS)
