@@ -60,9 +60,8 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags') }}
         run: |
           make RA_LAUNCHER_WIFI=2 package-nightly > build.log 2>&1 || {
-            tail -n 60 build.log | while IFS= read -r line; do
-              echo "::error::$line"
-            done
+            ERR=$(tail -n 40 build.log | tr '\r\n' '|' | tr '"' "'")
+            echo "::error title=BuildFailure::$ERR"
             exit 1
           }
       - name: Build release
