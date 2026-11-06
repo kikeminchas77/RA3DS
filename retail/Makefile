@@ -127,7 +127,8 @@ dsiwifi:
 		exit 1; \
 	}
 	@$(MAKE) -C $(DSIWIFI) include/dswifi_version.h
-	@$(MAKE) -C $(DSIWIFI) release
+	@mkdir -p $(DSIWIFI)/lib
+	@$(MAKE) -C $(DSIWIFI)/arm_iop BUILD=release
 
 #---------------------------------------------------------------------------------
 arm7/$(TARGET).elf: $(ARM7_EXTRA_DEPS)

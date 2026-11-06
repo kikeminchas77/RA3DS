@@ -95,4 +95,10 @@
     this file is for.
 */
 
+#include <nds/fifocommon.h>
+#include <nds/fifomessages.h>
+#ifndef memUncached
+#define memUncached(addr) ((void*)((u32)(addr) | 0x00400000))
+#endif
+
 #endif /* LWIPOPTS_NDSBS_H */
