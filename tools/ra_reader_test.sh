@@ -89,7 +89,7 @@ $CC -std=gnu99 -Wall -Wno-unused-function -Wno-pointer-to-int-cast -Wno-int-to-p
 	retail/arm9/source/ra_wifi_verdict.c \
 	retail/cardenginei/arm9_ra/source/ra_text.c \
 	retail/cardenginei/arm9_ra/source/ra_overlay.c \
-	-lm -o "$out/ra_reader_test"
+	-lm -lpthread -o "$out/ra_reader_test"
 
 set +e
 "$out/ra_reader_test"
@@ -125,7 +125,7 @@ $CC -std=gnu99 -Wall -O1 \
 	retail/arm9/source/ra_patch.c retail/arm9/source/ra_queue.c \
 	"$RC"/src/rhash/md5.c "$RC"/src/rhash/hash.c "$RC"/src/rhash/hash_rom.c \
 	"$RC"/src/rc_util.c "$RC"/src/rc_compat.c \
-	-o "$out/ra_launcher_test"
+	-lpthread -o "$out/ra_launcher_test"
 
 set +e
 "$out/ra_launcher_test" || status=1
@@ -166,7 +166,7 @@ $CC -std=gnu99 -Wall -O1 \
 	$rc_runtime_sources \
 	"$RC"/src/rc_util.c "$RC"/src/rc_compat.c "$RC"/src/rc_version.c \
 	"$RC"/src/rhash/md5.c \
-	-lm -o "$out/ra_fit_test"
+	-lm -lpthread -o "$out/ra_fit_test"
 
 set +e
 "$out/ra_fit_test" || status=1
