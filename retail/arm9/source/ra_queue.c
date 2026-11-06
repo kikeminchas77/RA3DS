@@ -547,8 +547,7 @@ int raQueuePack(const raQueue* q, const int* keep, int keepCount, char* out, int
 				if (q->codes[from][0]) {
 					need += 1 + (int)strlen(q->codes[from])
 					      + 1 + (int)strlen(q->titles[from])
-					      + 2   /* the tab and the mode digit */
-					      + 2;  /* the tab and repacked elapsed '0' */
+					      + 2;  /* the tab and the mode digit */
 				}
 			}
 			if (need > RA_QUEUE_RECORD) {
@@ -591,8 +590,6 @@ int raQueuePack(const raQueue* q, const int* keep, int keepCount, char* out, int
 				*/
 				record[at++] = '\t';
 				record[at++] = q->hardcore[from] ? '1' : '0';
-				record[at++] = '\t';
-				record[at++] = '0';
 			}
 		}
 		record[at++] = '\n';

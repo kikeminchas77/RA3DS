@@ -1949,7 +1949,7 @@ static void test_queue(void) {
 		    read as softcore.
 		*/
 		CHECK(memcmp(out + 0 * RA_QUEUE_RECORD,
-		             "93119\t20260810142345\tYZ4E\tCONTRA4\t0\t0\n", 38) == 0);
+		             "93119\t20260810142345\tYZ4E\tCONTRA4\t0\n", 36) == 0);
 		/* The unstamped one is written the old way, not with a bogus date or an invented game. */
 		CHECK(memcmp(out + 1 * RA_QUEUE_RECORD, "93121\n", 6) == 0);
 
