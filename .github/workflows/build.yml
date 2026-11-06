@@ -56,10 +56,10 @@ jobs:
         run: ./tools/ra_reader_test.sh
       - name: Build nightly
         if: ${{ !startsWith(github.ref, 'refs/tags') }}
-        run: make package-nightly
+        run: make RA_LAUNCHER_WIFI=2 package-nightly
       - name: Build release
         if: ${{ startsWith(github.ref, 'refs/tags') }}
-        run: make package-release
+        run: make RA_LAUNCHER_WIFI=2 package-release
       # How much room is left in each cardengine window that carries the reader.
       # The linker scripts already fail the build if it runs out; this is so the
       # margin is visible while it is still a margin, on the pinned toolchain rather
