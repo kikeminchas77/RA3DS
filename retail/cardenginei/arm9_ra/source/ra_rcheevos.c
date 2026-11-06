@@ -580,6 +580,7 @@ static u8  unlockLost;      /* ring was full when one fired */
 static u16 unlockSent;      /* handed to the ARM7 and acknowledged */
 static u8  unlockNoChannel; /* the published shared address was not one of the two legal ones */
 static u8  unlockSynthetic; /* triggers refused for carrying a synthetic id */
+static raSnapshot* s_currentSnapshot = NULL;
 
 /*
     Publish an unlock where the 3DS's ARM11 could read it. See raSnapshot.notifySeq for the protocol
@@ -1753,8 +1754,6 @@ static void ra_rc_do_frame_slice(u8 slice, u8 parts) {
 	}
 }
 
-static raSnapshot* s_currentSnapshot = NULL;
-
 static u8 ra_rc_frame_step(raSnapshot* snapshot) {
 	s_currentSnapshot = snapshot;
 	/*
@@ -1813,6 +1812,7 @@ static u8 ra_rc_frame_step(raSnapshot* snapshot) {
 */
 void ra_rc_tick(raSnapshot* snapshot) {
 	const rc_trigger_t* trigger;
+	s_currentSnapshot = snapshot;
 	unsigned measured = 0;
 	unsigned target   = 0;
 	u16 startLine = 0;

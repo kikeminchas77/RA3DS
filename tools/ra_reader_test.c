@@ -1395,7 +1395,7 @@ int main(void) {
 		const u8 queuedBefore    = unlockQueued;
 		const u8 syntheticBefore = unlockSynthetic;
 
-		ra_rc_queue_unlock(RA_TEST_ACHIEVEMENT_ID);
+		ra_rc_queue_unlock(RA_TEST_ACHIEVEMENT_ID, 0);
 		CHECK(unlockQueued == queuedBefore);
 		CHECK(unlockSynthetic == syntheticBefore + 1);
 		/* And stated as the relationship too, so a failure says which half moved. */
@@ -1638,7 +1638,7 @@ int main(void) {
 		{
 			const u8 queuedBefore = v->queued;
 
-			ra_rc_queue_unlock(302329);   /* entry[0], already EARNED */
+			ra_rc_queue_unlock(302329, 0);   /* entry[0], already EARNED */
 			CHECK(v->entry[0].flags == RA_VIEWER_EARNED);
 			CHECK(v->queued == queuedBefore);
 		}
