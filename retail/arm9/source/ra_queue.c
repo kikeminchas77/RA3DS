@@ -256,6 +256,7 @@ void raQueueScan(raQueue* q, const char* text, int length) {
 		char code[RA_QUEUE_CODE + 1];
 		char title[RA_QUEUE_TITLE + 1];
 		int hardcore;
+		u32 elapsed;
 		int overflow;
 		int digits;
 		int j;
@@ -315,6 +316,7 @@ void raQueueScan(raQueue* q, const char* text, int length) {
 		code[0] = 0;
 		title[0] = 0;
 		hardcore = 0;
+		elapsed  = 0;
 		if (i < length && text[i] == '\t') {
 			const int start = ++i;
 
@@ -379,6 +381,14 @@ void raQueueScan(raQueue* q, const char* text, int length) {
 							hardcore = (text[i] == '1');
 							i++;
 						}
+						i = skipPadding(text, i, length);
+						if (i < length && text[i] == '\t') {
+							i++;
+							while (i < length && text[i] >= '0' && text[i] <= '9') {
+								elapsed = elapsed * 10u + (u32)(text[i] - '0');
+								i++;
+							}
+						}
 					}
 				}
 			}
@@ -408,6 +418,15 @@ void raQueueScan(raQueue* q, const char* text, int length) {
 			*/
 			while (i < length && text[i] != '\n') {
 				i++;
+			}
+		}
+
+		if (stamp) {
+			stamp += elapsed;
+			if (elapsed >= 60) {
+				char updatedStamp[15];
+				raQueueUnixToStamp(stamp, updatedStamp);
+				packed = raWhenFromStamp(updatedStamp);
 			}
 		}
 
@@ -528,7 +547,8 @@ int raQueuePack(const raQueue* q, const int* keep, int keepCount, char* out, int
 				if (q->codes[from][0]) {
 					need += 1 + (int)strlen(q->codes[from])
 					      + 1 + (int)strlen(q->titles[from])
-					      + 2;  /* the tab and the mode digit */
+					      + 2   /* the tab and the mode digit */
+					      + 2;  /* the tab and repacked elapsed '0' */
 				}
 			}
 			if (need > RA_QUEUE_RECORD) {
@@ -571,6 +591,8 @@ int raQueuePack(const raQueue* q, const int* keep, int keepCount, char* out, int
 				*/
 				record[at++] = '\t';
 				record[at++] = q->hardcore[from] ? '1' : '0';
+				record[at++] = '\t';
+				record[at++] = '0';
 			}
 		}
 		record[at++] = '\n';

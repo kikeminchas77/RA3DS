@@ -294,6 +294,8 @@ typedef struct raResult {
     shipping behaviour. The failure direction is toward doing the work, not toward skipping it.
 */
 #define RA_SHARED_UNLOCK_LEVEL 11
+/* Slot 12: elapsed seconds since session start (VBlank timer) */
+#define RA_SHARED_UNLOCK_TIME  12
 
 #define RA_QUEUE_LEVEL_OFF     0   /* never seen by the ARM7 */
 #define RA_QUEUE_LEVEL_FULL    1

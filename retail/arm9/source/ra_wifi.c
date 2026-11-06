@@ -2417,6 +2417,7 @@ void raWifiProbe(bool sdFound, const char* ndsPath, bool cheatsOn) {
 	    before the radio can be blamed for anything, and stage 0c below still reports every field.
 	*/
 	raConfigRead(sdFound ? RA_CFG_PATH : RA_CFG_PATH_FAT, &config);
+	raNetSetUserAgent(config.userAgent);
 	raVerbose = config.verboseLog;
 
 	if (raVerbose) {
@@ -2496,6 +2497,7 @@ void raWifiProbe(bool sdFound, const char* ndsPath, bool cheatsOn) {
 	raWifiLog("verbose_log      %s\n", config.verboseLog ? "1" : "0");
 	raWifiLog("overlay          %s\n", config.overlay ? "1" : "0");
 	raWifiLog("queue            %s\n", config.queue ? "1" : "0");
+	raWifiLog("user_agent       %s\n", raNetGetUserAgent());
 	if (config.found) {
 		raWifiLog("username         %s\n", config.username[0] ? config.username : "(empty)");
 		raWifiLog("password         %s\n", raConfigRedact(config.password));

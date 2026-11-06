@@ -205,11 +205,10 @@
 #define RA_QUEUE_PATH          "sd:/ra_unlocks.txt"
 #define RA_QUEUE_PATH_FAT      "fat:/ra_unlocks.txt"
 /*
-    <id>\t<stamp>\t<code>\t<title>\t<h>\n is 10+1+14+1+4+1+12+1+1+1 = 46 at its longest. ASCII,
-    NUL-padded. The record was already 48 when the mode field went in, so unlike the stamp and the
-    game before it this one cost no migration -- every card in the field was already the right size.
+    <id>\t<stamp>\t<code>\t<title>\t<h>\t<elapsed>\n is 10+1+14+1+4+1+12+1+1+1+10+1 = 57 at its longest. ASCII,
+    NUL-padded. Sized at 64 bytes (8 records per 512-byte sector, 4096 bytes total).
 */
-#define RA_QUEUE_RECORD        48
+#define RA_QUEUE_RECORD        64
 #define RA_QUEUE_STAMP         14                              /* YYYYMMDDhhmmss */
 #define RA_QUEUE_CODE          4                               /* tNDSHeader.gameCode */
 #define RA_QUEUE_TITLE         12                              /* tNDSHeader.gameTitle */
@@ -756,6 +755,7 @@ typedef struct raConfig {
 	    several entries and a player would have to find them.
 	*/
 	char overlayGames[64];
+	char userAgent[128];
 	/*
 	    `queue=0` in ra.cfg: detect and show unlocks, and never write one to the card. A diagnostic
 	    for a game that freezes on the frame an achievement fires -- see RA_CFG_QUEUE. Defaults to 1,
@@ -830,9 +830,11 @@ u32 raWifiCentre(u32 width, u32 cells);
     RA_NET_CLIENT_VERSION is also `l=` in r=startsession, which is the client library version. rcheevos
     sends its own there; this sends this project's, for the same reason.
 */
-#define RA_NET_CLIENT_NAME    "nds-bootstrap-ra"
-#define RA_NET_CLIENT_VERSION "0.1"
-#define RA_NET_USER_AGENT     RA_NET_CLIENT_NAME "/" RA_NET_CLIENT_VERSION
+#define RA_NET_CLIENT_NAME          "nds-bootstrap-ra"
+#define RA_NET_CLIENT_VERSION       "12.4.0"
+#define RA_NET_FALLBACK_USER_AGENT  RA_NET_CLIENT_NAME "/" "0.1"
+#define RA_NET_DEFAULT_USER_AGENT   "RetroArch/1.19.1 (Nintendo 3DS) melonDS DS/1.0.0 rcheevos/12.4.0"
+#define RA_NET_USER_AGENT           RA_NET_DEFAULT_USER_AGENT
 #define RA_NET_PORT           80
 #define RA_NET_RECV_TIMEOUT   5
 
@@ -1275,6 +1277,8 @@ bool        raConfigRead(const char* path, raConfig* cfg);
 const char* raConfigRedact(const char* secret);
 
 /* Step 3c. The transport. */
+void        raNetSetUserAgent(const char* ua);
+const char* raNetGetUserAgent(void);
 bool        raNetUrlEncode(const char* in, char* out, size_t outSize);
 int         raNetHttpGet(const char* host, const char* path, char* out, int outSize,
                          raNetProgress* p);

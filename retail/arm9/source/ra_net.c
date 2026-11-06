@@ -46,6 +46,26 @@
     hex. Truncates rather than overruns, and says which by returning false, because a silently
     shortened password is the same bug in a different coat.
 */
+static char s_raNetUserAgent[128] = RA_NET_DEFAULT_USER_AGENT;
+
+void raNetSetUserAgent(const char* ua) {
+	if (ua && ua[0]) {
+		size_t n = strlen(ua);
+		if (n >= sizeof(s_raNetUserAgent)) {
+			n = sizeof(s_raNetUserAgent) - 1;
+		}
+		memcpy(s_raNetUserAgent, ua, n);
+		s_raNetUserAgent[n] = 0;
+	} else {
+		strncpy(s_raNetUserAgent, RA_NET_DEFAULT_USER_AGENT, sizeof(s_raNetUserAgent) - 1);
+		s_raNetUserAgent[sizeof(s_raNetUserAgent) - 1] = 0;
+	}
+}
+
+const char* raNetGetUserAgent(void) {
+	return s_raNetUserAgent;
+}
+
 bool raNetUrlEncode(const char* in, char* out, size_t outSize) {
 	static const char hex[] = "0123456789ABCDEF";
 	size_t            o     = 0;
@@ -276,10 +296,10 @@ int raNetHttpGet(const char* host, const char* path, char* out, int outSize, raN
 	if (sniprintf(request, sizeof(request),
 	              "GET %s HTTP/1.1\r\n"
 	              "Host: %s\r\n"
-	              "User-Agent: " RA_NET_USER_AGENT "\r\n"
+	              "User-Agent: %s\r\n"
 	              "Connection: close\r\n"
 	              "\r\n",
-	              path, host) >= (int)sizeof(request)) {
+	              path, host, s_raNetUserAgent) >= (int)sizeof(request)) {
 		lwip_close(sock);
 		return RA_NET_REQ_TOO_LONG;
 	}
@@ -626,10 +646,10 @@ int raNetHttpGetStream(const char* host, const char* path, raNetSink sink, void*
 	if (sniprintf(request, sizeof(request),
 	              "GET %s HTTP/1.1\r\n"
 	              "Host: %s\r\n"
-	              "User-Agent: " RA_NET_USER_AGENT "\r\n"
+	              "User-Agent: %s\r\n"
 	              "Connection: close\r\n"
 	              "\r\n",
-	              path, host) >= (int)sizeof(request)) {
+	              path, host, s_raNetUserAgent) >= (int)sizeof(request)) {
 		lwip_close(sock);
 		return RA_NET_REQ_TOO_LONG;
 	}

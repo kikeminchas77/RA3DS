@@ -1048,6 +1048,7 @@ void returnToLoader(bool reboot) {
 #define RA_UNLOCK_HARDCORE_BIT 0x80000000u
 
 static u32 raUnlockPending[RA_UNLOCK_PENDING_MAX];
+static u32 raUnlockPendingTime[RA_UNLOCK_PENDING_MAX];
 static u8  raUnlockPendingCount;
 #endif
 
@@ -1154,7 +1155,7 @@ static __attribute__((noinline)) void raStampCapture(void) {
 /* my_fat.c's sector cache; the queue may be on either card, so both are cleared. */
 extern int prevSect[2];
 
-static void raUnlockAppend(u32 id, const char* stamp, int hardcore) {
+static void raUnlockAppend(u32 id, const char* stamp, int hardcore, u32 elapsedSeconds) {
 	char record[RA_QUEUE_RECORD];
 	char digits[11];
 	u32  value = id;
@@ -1283,6 +1284,19 @@ static void raUnlockAppend(u32 id, const char* stamp, int hardcore) {
 		*/
 		record[at++] = '\t';
 		record[at++] = hardcore ? '1' : '0';
+
+		if (elapsedSeconds) {
+			record[at++] = '\t';
+			n = 0;
+			value = elapsedSeconds;
+			while (value && n < (int)sizeof(digits)) {
+				digits[n++] = (char)('0' + (value % 10));
+				value /= 10;
+			}
+			for (i = 0; i < n; i++) {
+				record[at++] = digits[n - 1 - i];
+			}
+		}
 		record[at] = '\n';
 	}
 
@@ -1838,7 +1852,8 @@ static void raUnlockService(void) {
 		const int oldIME = enterCriticalSection();
 
 		raUnlockAppend(sharedAddr[RA_SHARED_UNLOCK_ID], raStampCache,
-		               req == RA_SHARED_UNLOCK_HARDCORE);
+		               req == RA_SHARED_UNLOCK_HARDCORE,
+		               sharedAddr[RA_SHARED_UNLOCK_TIME]);
 		leaveCriticalSection(oldIME);
 	}
 #else
@@ -1858,6 +1873,7 @@ static void raUnlockService(void) {
 		if (raUnlockPendingCount >= RA_UNLOCK_PENDING_MAX) {
 			return;
 		}
+		raUnlockPendingTime[raUnlockPendingCount] = sharedAddr[RA_SHARED_UNLOCK_TIME];
 		raUnlockPending[raUnlockPendingCount++] =
 			sharedAddr[RA_SHARED_UNLOCK_ID]
 			| ((req == RA_SHARED_UNLOCK_HARDCORE) ? RA_UNLOCK_HARDCORE_BIT : 0);
@@ -1891,7 +1907,8 @@ static __attribute__((noinline)) void raUnlockDrain(void) {
 		const u32 packed = raUnlockPending[i];
 
 		raUnlockAppend(packed & ~RA_UNLOCK_HARDCORE_BIT, raStampCache,
-		               (packed & RA_UNLOCK_HARDCORE_BIT) != 0);
+		               (packed & RA_UNLOCK_HARDCORE_BIT) != 0,
+		               raUnlockPendingTime[i]);
 	}
 	raUnlockPendingCount = 0;
 	leaveCriticalSection(oldIME);

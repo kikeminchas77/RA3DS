@@ -572,6 +572,7 @@ static int ra_rc_validate_address(uint32_t consoleAddress) {
 */
 #define RA_UNLOCK_RING 8
 static u32 unlockRing[RA_UNLOCK_RING];
+static u32 unlockTimeRing[RA_UNLOCK_RING];
 static u8  unlockHead;      /* next slot to write */
 static u8  unlockTail;      /* next slot to offer */
 static u8  unlockQueued;    /* how many are in the ring */
@@ -649,7 +650,7 @@ static void ra_beacon_publish(raSnapshot* snapshot, u32 id, const char* title, i
 #endif
 }
 
-static void ra_rc_queue_unlock(u32 id) {
+static void ra_rc_queue_unlock(u32 id, u32 elapsedSeconds) {
 	if (id == 0) {
 		return;
 	}
@@ -693,6 +694,7 @@ static void ra_rc_queue_unlock(u32 id) {
 		return;
 	}
 	unlockRing[unlockHead] = id;
+	unlockTimeRing[unlockHead] = elapsedSeconds;
 	unlockHead = (u8)((unlockHead + 1) % RA_UNLOCK_RING);
 	unlockQueued++;
 
@@ -801,7 +803,8 @@ static void ra_rc_offer_unlock(raSnapshot* snapshot) {
 	if (raCardReadPending(shared[3])) {
 		return;
 	}
-	shared[RA_SHARED_UNLOCK_ID]  = unlockRing[unlockTail];
+	shared[RA_SHARED_UNLOCK_ID]   = unlockRing[unlockTail];
+	shared[RA_SHARED_UNLOCK_TIME] = unlockTimeRing[unlockTail];
 	/*
 	    And how much of the request the ARM7 should carry out -- see RA_SHARED_UNLOCK_LEVEL, which
 	    carries the ladder and why it exists. Written before the magic for the same reason the id is:
@@ -858,7 +861,7 @@ static void ra_rc_event_handler(const rc_runtime_event_t* runtimeEvent) {
 		    Queued before anything else in this branch, because this is the only moment the id exists
 		    and everything below is reporting. An unlock that is not queued here is lost for good.
 		*/
-		ra_rc_queue_unlock(runtimeEvent->id);
+		ra_rc_queue_unlock(runtimeEvent->id, s_currentSnapshot ? (s_currentSnapshot->ticks / 60) : 0);
 		/*
 		    The line this id came from, looked up rather than derived. It used to be `id - base + 1`,
 		    which only worked because every definition was numbered from RA_TEST_ACHIEVEMENT_ID in
@@ -1750,7 +1753,10 @@ static void ra_rc_do_frame_slice(u8 slice, u8 parts) {
 	}
 }
 
+static raSnapshot* s_currentSnapshot = NULL;
+
 static u8 ra_rc_frame_step(raSnapshot* snapshot) {
+	s_currentSnapshot = snapshot;
 	/*
 	    One slice of the trigger list, and every memref. rcParts is 1 until a measurement raises it,
 	    so on a set that fits inside the game's blanking period this evaluates everything, every

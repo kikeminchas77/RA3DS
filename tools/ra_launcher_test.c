@@ -306,6 +306,7 @@ static void test_config(void) {
 	*/
 	CHECK(cfg.overlay == 1);
 	CHECK(cfg.queue == 1);
+	CHECK(strcmp(cfg.userAgent, RA_NET_DEFAULT_USER_AGENT) == 0);
 
 	printf("\nverbose_log is off unless the file asks for it\n");
 	{
@@ -344,6 +345,25 @@ static void test_config(void) {
 		CHECK(vcfg.queue == 0 && vcfg.overlay == 1);
 		CHECK(vcfg.unknown == 0);
 		CHECK(vcfg.sync == 1 && vcfg.submit == 1);
+	}
+
+	printf("\nuser_agent defaults to accepted RetroArch identity and can be overridden\n");
+	{
+		raConfig uacfg;
+		FILE*    uaf = fopen(path, "w");
+
+		fputs("username=u\npassword=p\nuser_agent=CustomClient/2.0\n", uaf);
+		fclose(uaf);
+		CHECK(raConfigRead(path, &uacfg) == true);
+		CHECK(strcmp(uacfg.userAgent, "CustomClient/2.0") == 0);
+		CHECK(uacfg.unknown == 0);
+		CHECK(uacfg.notYet == 0);
+
+		raNetSetUserAgent(uacfg.userAgent);
+		CHECK(strcmp(raNetGetUserAgent(), "CustomClient/2.0") == 0);
+
+		raNetSetUserAgent("");
+		CHECK(strcmp(raNetGetUserAgent(), RA_NET_DEFAULT_USER_AGENT) == 0);
 	}
 
 	printf("\nthe body's end is read from the headers, not waited for\n");
@@ -1687,6 +1707,26 @@ static void test_queue(void) {
 			CHECK(q.hard == 1 && q.dropped == 0);
 		}
 
+		/* A record with elapsed seconds: verifies VBlank timer offset advances the timestamp */
+		{
+			static const char arm7elapsed[RA_QUEUE_RECORD] = {
+				'3','0','2','3','2','9','\t',
+				'2','0','2','6','0','8','1','5','1','8','3','3','0','0','\t',
+				'Y','C','T','E','\t',
+				'C','O','N','T','R','A',' ','4',0,0,0,0,'\t',
+				'1','\t',
+				'3','0','0','\n'
+			};
+
+			raQueueScan(&q, arm7elapsed, RA_QUEUE_RECORD);
+			CHECK(q.count == 1);
+			CHECK(q.ids[0] == 302329);
+			CHECK(q.hardcore[0] == 1);
+			/* 2026-08-15 18:33:00 + 300 seconds = 2026-08-15 18:38:00 */
+			CHECK(q.times[0] == raQueueStampToUnix("20260815183300") + 300);
+			CHECK(q.packed[0] == raWhenFromStamp("20260815183800"));
+		}
+
 		/* Absent means softcore: a bare id, and a record from a build before the field existed. */
 		raQueueScan(&q, "93119\n93120\t20260815183300\tYCTE\tCONTRA 4\n", 41);
 		CHECK(q.count == 2);
@@ -1716,7 +1756,7 @@ static void test_queue(void) {
 		CHECK(q.hard == 1);
 
 		/* The longest record the writer can produce still fits, with the field on the end. */
-		CHECK(10 + 1 + RA_QUEUE_STAMP + 1 + RA_QUEUE_CODE + 1 + RA_QUEUE_TITLE + 1 + 1 + 1
+		CHECK(10 + 1 + RA_QUEUE_STAMP + 1 + RA_QUEUE_CODE + 1 + RA_QUEUE_TITLE + 1 + 1 + 1 + 10 + 1
 		      <= RA_QUEUE_RECORD);
 
 		/*
@@ -1909,7 +1949,7 @@ static void test_queue(void) {
 		    read as softcore.
 		*/
 		CHECK(memcmp(out + 0 * RA_QUEUE_RECORD,
-		             "93119\t20260810142345\tYZ4E\tCONTRA4\t0\n", 36) == 0);
+		             "93119\t20260810142345\tYZ4E\tCONTRA4\t0\t0\n", 38) == 0);
 		/* The unstamped one is written the old way, not with a bogus date or an invented game. */
 		CHECK(memcmp(out + 1 * RA_QUEUE_RECORD, "93121\n", 6) == 0);
 
@@ -1926,7 +1966,7 @@ static void test_queue(void) {
 		    A record must hold id, stamp, code, title and mode with their delimiters:
 		    10+1+14+1+4+1+12+1+1+1.
 		*/
-		CHECK(RA_QUEUE_RECORD >= 46);
+		CHECK(RA_QUEUE_RECORD >= 53);
 	}
 
 	printf("\na record names the game it came from, straight out of the ROM header\n");

@@ -118,6 +118,7 @@
     RA_OVERLAY_LISTED for why the popup is opt-in per game now.
 */
 #define RA_CFG_OVERLAY_GAMES "overlay_games"
+#define RA_CFG_USER_AGENT    "user_agent"
 
 #define RA_CFG_QUEUE     "queue"
 
@@ -254,6 +255,7 @@ bool raConfigRead(const char* path, raConfig* cfg) {
 	cfg->sync    = 1;
 	cfg->overlay = RA_OVERLAY_LISTED;
 	cfg->overlayGames[0] = 0;
+	raCfgCopy(cfg->userAgent, sizeof(cfg->userAgent), RA_NET_DEFAULT_USER_AGENT);
 	cfg->queue   = 1;
 	/*
 	    verboseLog is left at the memset's zero deliberately, and it is the one default in here that
@@ -306,6 +308,8 @@ bool raConfigRead(const char* path, raConfig* cfg) {
 			raCfgCopy(cfg->overlayGames, sizeof(cfg->overlayGames), value);
 		} else if (strcmp(key, RA_CFG_QUEUE) == 0) {
 			cfg->queue = raCfgLevel(value, RA_QUEUE_LEVEL_MAX, RA_QUEUE_LEVEL_FULL);
+		} else if (strcmp(key, RA_CFG_USER_AGENT) == 0) {
+			raCfgCopy(cfg->userAgent, sizeof(cfg->userAgent), value);
 		} else if (raCfgKnownUnused(key)) {
 			cfg->notYet++;
 		} else {
