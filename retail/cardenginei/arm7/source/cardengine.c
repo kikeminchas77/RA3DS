@@ -1124,10 +1124,10 @@ static char raStampCache[RA_QUEUE_STAMP] = "20000000000000";
 static __attribute__((noinline)) void raStampCapture(void) {
 	char* const out = raStampCache;
 	RTCtime now;
-	u8      field[5];
+	u8      field[6];
 	u8      hours;
 	int     f;
-	int     at = 0;
+	int     at;
 
 	rtcGetTimeAndDate((uint8*)&now);
 	hours = now.hours;
@@ -1135,19 +1135,20 @@ static __attribute__((noinline)) void raStampCapture(void) {
 		hours -= 40;
 	}
 
-	field[0] = now.month;
-	field[1] = now.day;
-	field[2] = hours;
-	field[3] = now.minutes;
-	field[4] = now.seconds;
+	field[0] = now.year;
+	field[1] = now.month;
+	field[2] = now.day;
+	field[3] = hours;
+	field[4] = now.minutes;
+	field[5] = now.seconds;
 
-	out[at++] = '2';
-	out[at++] = '0';
-	out[at++] = (char)('0' + (now.year / 10));
-	out[at++] = (char)('0' + (now.year % 10));
-	for (f = 0; f < 5; f++) {
-		out[at++] = (char)('0' + (field[f] / 10));
-		out[at++] = (char)('0' + (field[f] % 10));
+	out[0] = '2';
+	out[1] = '0';
+	at = 2;
+	for (f = 0; f < 6; f++) {
+		const u8 val = field[f];
+		out[at++] = (char)('0' + (val / 10));
+		out[at++] = (char)('0' + (val % 10));
 	}
 }
 
@@ -1155,12 +1156,28 @@ static __attribute__((noinline)) void raStampCapture(void) {
 /* my_fat.c's sector cache; the queue may be on either card, so both are cleared. */
 extern int prevSect[2];
 
+static __attribute__((noinline)) int ra_format_u32(char* out, u32 val) {
+	char rev[10];
+	int len = 0;
+	int count;
+	if (val == 0) {
+		*out = '0';
+		return 1;
+	}
+	while (val) {
+		rev[len++] = (char)('0' + (val % 10));
+		val /= 10;
+	}
+	count = len;
+	while (len > 0) {
+		*out++ = rev[--len];
+	}
+	return count;
+}
+
 static void raUnlockAppend(u32 id, const char* stamp, int hardcore, u32 elapsedSeconds) {
 	char record[RA_QUEUE_RECORD];
-	char digits[11];
-	u32  value = id;
-	int  n = 0;
-	int  i;
+	int  at;
 
 	if (raUnlocksCluster == 0 || id == 0) {
 		return;
@@ -1195,51 +1212,27 @@ static void raUnlockAppend(u32 id, const char* stamp, int hardcore, u32 elapsedS
 		return;
 	}
 
-	while (value && n < (int)sizeof(digits)) {
-		digits[n++] = (char)('0' + (value % 10));
-		value /= 10;
-	}
 	toncset(record, 0, RA_QUEUE_RECORD);
-	for (i = 0; i < n; i++) {
-		record[i] = digits[n - 1 - i];
-	}
-	record[n] = '\n';
+	at = ra_format_u32(record, id);
+	record[at] = '\n';
 
 	/*
-	    Stamp it with when, not only what, so the launcher can send `o=` and the server dates the
+	    Stamp it with when, not only what, so the launcher can send o= and the server dates the
 	    unlock by the moment it was earned instead of the boot that reported it -- which with this
 	    client can be a day later. See RA_QUEUE_PATH for the record layout.
 
-	    `stamp` is read by the caller, outside the critical section, and is NULL when the clock could
-	    not be believed -- in which case the record is a bare id and is sent without `o=`, which is
+	    stamp is read by the caller, outside the critical section, and is NULL when the clock could
+	    not be believed -- in which case the record is a bare id and is sent without o=, which is
 	    exactly what every unlock did before this existed.
 	*/
 	if (stamp) {
-		int at = n;
-
 		record[at++] = '\t';
-		for (i = 0; i < RA_QUEUE_STAMP; i++) {
-			record[at++] = stamp[i];
-		}
+		tonccpy(record + at, stamp, RA_QUEUE_STAMP);
+		at += RA_QUEUE_STAMP;
 
 		/*
-		    And which game it came from -- `gameCode` identifies the release and `gameTitle` is what a
-		    human reads. No network and nothing passed down from the launcher, which is what the case
-		    this exists for demands: a queue full of one game's unlocks while another is running and
-		    there is no WiFi to drain it.
-
-		    Read from the copies taken at init, **not** from ndsHeader here. That header is the
-		    loader's and the game reuses its memory once running, so reading it on the frame an
-		    achievement fires works early in a session and returns nothing later in one.
-
-		    Both are fixed-width fields that are *not* NUL-terminated and are padded with spaces, and
-		    neither is guaranteed to be text at all -- a homebrew ROM can put anything there. So
-		    anything outside printable ASCII stops the copy, which also keeps a stray tab or newline
-		    from inventing a field boundary in a record that is delimited by them.
-		*/
-		/*
-		    And which game it came from, out of the running ROM's own header -- `gameCode` identifies
-		    the release and `gameTitle` is what a human reads. No network, nothing passed down from the
+		    And which game it came from, out of the running ROM's own header -- gameCode identifies
+		    the release and gameTitle is what a human reads. No network, nothing passed down from the
 		    launcher, and available on the frame the achievement fires, which is what the case this
 		    exists for demands: a queue full of one game's unlocks while another is running and there
 		    is no WiFi to drain it.
@@ -1280,22 +1273,14 @@ static void raUnlockAppend(u32 id, const char* stamp, int hardcore, u32 elapsedS
 
 		    Two characters, and the record was sized for them -- 44 bytes used of 48 before this, 46
 		    after. This binary is the tightest in the tree, so it writes a byte it is handed rather
-		    than deciding anything: `hardcore` came across in the request's own magic.
+		    than deciding anything: hardcore came across in the request's own magic.
 		*/
 		record[at++] = '\t';
 		record[at++] = hardcore ? '1' : '0';
 
 		if (elapsedSeconds) {
 			record[at++] = '\t';
-			n = 0;
-			value = elapsedSeconds;
-			while (value && n < (int)sizeof(digits)) {
-				digits[n++] = (char)('0' + (value % 10));
-				value /= 10;
-			}
-			for (i = 0; i < n; i++) {
-				record[at++] = digits[n - 1 - i];
-			}
+			at += ra_format_u32(record + at, elapsedSeconds);
 		}
 		record[at] = '\n';
 	}
