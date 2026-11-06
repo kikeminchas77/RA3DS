@@ -27,7 +27,7 @@ jobs:
     # usual trade: do not try to prevent the unknown, make it visible in the log. Releases are not
     # built here anyway -- tools/ra_release.sh builds those -- so a drift shows up as a margin
     # changing in the report below rather than as a ROM nobody can reproduce.
-    container: devkitpro/devkitarm:latest
+    container: devkitpro/devkitarm:20241104
     name: Build with Docker using devkitARM
     steps:
       - name: Checkout repo
@@ -36,9 +36,11 @@ jobs:
           submodules: recursive
       - name: Install tools
         run: |
-          # Retried, because the mirror being briefly out of step with its own index is exactly how
-          # this workflow spent its whole life failing. gcc is for lzss, which has to run on the
-          # host; p7zip-full is for packing the artifacts.
+          # Debian Bullseye is EOL; point to archive.debian.org with check-valid-until=no to prevent 404s
+          cat <<'EOF' > /etc/apt/sources.list
+          deb [check-valid-until=no] http://archive.debian.org/debian/ bullseye main contrib non-free
+          deb [check-valid-until=no] http://archive.debian.org/debian-security/ bullseye-security main contrib non-free
+          EOF
           for i in 1 2 3; do
             apt-get update && apt-get install -y --no-install-recommends p7zip-full gcc && break
             echo "apt attempt $i failed; retrying"
